@@ -80,6 +80,5 @@ export function getAngle(edges, position) {
   const m12 = Math.sqrt(dx21 * dx21 + dy21 * dy21);
   const m13 = Math.sqrt(dx31 * dx31 + dy31 * dy31);
   const theta = Math.acos((dx21 * dx31 + dy21 * dy31) / (m12 * m13));
-  const angleRad = (Math.PI * 2 - theta) % (Math.PI * 2);
-  return Math.round((180 * angleRad) / Math.PI);
+  return Math.round((180 * theta) / Math.PI);
 }
