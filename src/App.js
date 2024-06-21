@@ -1,239 +1,124 @@
-import { Circle, Layer, Line, Shape, Stage, Text } from "react-konva";
+import ReactFlow, {
+  Background,
+  BackgroundVariant,
+  Controls,
+  MiniMap,
+  applyNodeChanges,
+  useReactFlow,
+} from "reactflow";
+import "reactflow/dist/style.css";
 import "./app.css";
+import Point from "./Point";
 import React from "react";
+import DoubleEdge from "./DoubleEdge";
 
-function App() {
-  const [params, setParams] = React.useState([]);
-  const [points, setPoints] = React.useState([]);
-  const [selected, setSelected] = React.useState(-1);
-  const stageRef = React.useRef();
+const nodeTypes = {
+  point: Point,
+};
 
-  function pointAtPDist(pslope, dist, { newX, newY }) {
-    let fx, fy;
-    if (pslope === 0) {
-      fx = newX + dist;
-      fy = newY;
-    } else if (!isFinite(pslope)) {
-      fx = newX;
-      fy = newY + dist;
-    } else {
-      var dx = dist / Math.sqrt(1 + pslope * pslope);
-      var dy = pslope * dx;
-      fx = pslope < 0 ? newX - dx : newX + dx;
-      fy = pslope < 0 ? newY - dy : newY + dy;
-    }
-    return { fx: fx, fy: fy };
-  }
+const edgeTypes = {
+  double: DoubleEdge,
+};
 
-  function pointAtDist(slope, dist, { newX, newY }, { xDir, yDir }) {
-    let fx, fy;
-    if (slope === 0) {
-      fx = xDir > 0 ? newX + dist : newX - dist;
-      fy = newY;
-    } else if (!isFinite(slope)) {
-      fx = newX;
-      fy = yDir > 0 ? newY + dist : newY - dist;
-    } else {
-      let dx = dist / Math.sqrt(1 + slope * slope);
-      let dy = slope * dx;
-      fx = xDir > 0 ? newX + dx : newX - dx;
+export default function App() {
+  const [nodes, setNodes] = React.useState([]);
+  const [edges, setEdges] = React.useState([]);
+  const { screenToFlowPosition, getNode } = useReactFlow();
 
-      if (slope > 0) {
-        fy = yDir > 0 ? newY + dy : newY - dy;
-      } else {
-        fy = yDir > 0 ? newY - dy : newY + dy;
-      }
-    }
-    return { fx: fx, fy: fy };
-  }
-
-  function mouseDown(e) {
-    const x = e.evt.layerX;
-    const y = -e.evt.layerY;
-    setPoints((curr) => {
-      let newElements = [];
-      if (curr.length > 0) {
-        const prev = curr[curr.length - 1];
-        const prevX = prev.x,
-          prevY = -prev.y;
-        const midX = (x + prevX) / 2;
-        const midY = (y + prevY) / 2;
-        const slope = (y - prevY) / (x - prevX);
-        const dist = 20;
-        const pslope = -1 / slope;
-        const { fx, fy } = pointAtPDist(pslope, dist, {
-          newX: midX,
-          newY: midY,
-        });
-        newElements.push({
-          type: "side",
-          name: `${params.length + 1}`,
-          coords: [{ x: fx, y: -fy }],
-          rotation: 360 - (180 * Math.atan(slope)) / Math.PI,
-        });
-      }
-      if (curr.length > 1) {
-        const last = curr[curr.length - 1];
-        const second = curr[curr.length - 2];
-        const secondY = -second.y;
-        const lastY = -last.y;
-        let length = Math.sqrt(
-          (second.x - last.x) * (second.x - last.x) +
-            (secondY - lastY) * (secondY - lastY)
-        );
-        let dist = length / 4;
-
-        const c1 = pointAtDist(
-          (lastY - secondY) / (last.x - second.x),
-          dist,
+  const addPoint = React.useCallback(
+    (e) => {
+      setNodes((curr) => {
+        let edgeAdded;
+        let segments = curr;
+        if (curr.length > 0) {
+          setEdges((edgeCurr) => {
+            const edge = {
+              id: `${curr.length}-${curr.length + 1}`,
+              source: curr.length.toString(),
+              target: (curr.length + 1).toString(),
+              type: "double",
+              label: String.fromCodePoint("A".codePointAt(0) + edgeCurr.length),
+            };
+            edgeAdded = {
+              n1: curr.length.toString(),
+              n2: (curr.length + 1).toString(),
+            };
+            segments = [
+              ...segments.slice(0, segments.length - 1),
+              {
+                ...segments[segments.length - 1],
+                data: {
+                  edges: [
+                    ...segments[segments.length - 1].data.edges,
+                    edgeAdded,
+                  ],
+                },
+              },
+            ];
+            return [...edgeCurr, edge];
+          });
+        }
+        return [
+          ...segments,
           {
-            newX: last.x,
-            newY: lastY,
+            id: (curr.length + 1).toString(),
+            type: "point",
+            position: screenToFlowPosition({
+              x: e.clientX,
+              y: e.clientY,
+            }),
+            data: {
+              edges: edgeAdded ? [edgeAdded] : [],
+            },
           },
-          { xDir: second.x - last.x, yDir: secondY - lastY }
-        );
-        length = Math.sqrt(
-          (x - last.x) * (x - last.x) + (y - lastY) * (y - lastY)
-        );
-        dist = length / 4;
-        const c2 = pointAtDist(
-          (y - lastY) / (x - last.x),
-          dist,
-          {
-            newX: last.x,
-            newY: lastY,
-          },
-          { xDir: x - last.x, yDir: y - lastY }
-        );
-        const middle = {
-          x: (c1.fx + c2.fx) / 2,
-          y: (c1.fy + c2.fy) / 2,
-        };
-        const cmid = pointAtDist(
-          (middle.y - lastY) / (middle.x - last.x),
-          10,
-          { newX: middle.x, newY: middle.y },
-          { xDir: middle.x - last.x, yDir: middle.y - lastY }
-        );
-        newElements.push({
-          type: "bend",
-          name: `${params.length + 2}`,
-          coords: [
-            { x: c1.fx, y: -c1.fy },
-            { x: cmid.fx, y: -cmid.fy },
-            { x: c2.fx, y: -c2.fy },
-          ],
-          rotation:
-            360 -
-            (180 * Math.atan((c2.fy - c1.fy) / (c2.fx - c1.fx))) / Math.PI,
+        ];
+      });
+    },
+    [screenToFlowPosition]
+  );
+
+  function onNodesChange(changes) {
+    setNodes((curr) => {
+      const updated = applyNodeChanges(changes, curr);
+      const nodes = {};
+      changes
+        .filter((chg) => chg.type === "position")
+        .forEach((chng) => {
+          const node = getNode(chng.id);
+          node.data.edges.forEach((edge) => {
+            if (edge.n1 !== chng.id) {
+              nodes[edge.n1] = true;
+            } else {
+              nodes[edge.n2] = true;
+            }
+          });
         });
-      }
-      setParams((currParams) => [...currParams, ...newElements]);
-      return [...curr, { x, y: -y }];
+      return updated.map((nd) => {
+        if (nodes[nd.id]) {
+          nd.data = {
+            ...nd.data,
+          };
+        }
+        return nd;
+      });
     });
   }
 
-  const line = [];
-  points.forEach((pt) => {
-    line.push(pt.x);
-    line.push(pt.y);
-  });
-
   return (
     <div className="container">
-      <Stage
-        width={Math.min(window.innerWidth, 600)}
-        height={400}
-        className="stage"
-        onMouseDown={mouseDown}
-        ref={stageRef}
+      <ReactFlow
+        nodeTypes={nodeTypes}
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        panOnScroll
+        selectionOnDrag
+        onlyRenderVisibleElements
+        onPaneClick={addPoint}
+        edgeTypes={edgeTypes}
       >
-        <Layer>
-          {points.map((point, index) => (
-            <Circle
-              radius={5}
-              fill="black"
-              x={point.x}
-              y={point.y}
-              key={`${point.x},${point.y}`}
-              onMouseDown={(e) => {
-                e.evt.stopPropagation();
-                setSelected(index);
-              }}
-            />
-          ))}
-          <Line points={line} stroke="black" strokeWidth={3} />
-          {params.map((record) =>
-            record.type === "side" ? (
-              <Text
-                text={record.name}
-                x={record.coords[0].x}
-                y={record.coords[0].y}
-                fontSize={18}
-                rotation={record.rotation}
-                key={`${record.coords[0].x},${record.coords[0].y}`}
-                fontStyle="bold"
-              />
-            ) : (
-              <React.Fragment
-                key={`${record.coords[0].x},${record.coords[0].y}-${record.coords[1].x},${record.coords[1].y}`}
-              >
-                <Curve points={record.coords} />
-                <Text
-                  text={record.name}
-                  x={record.coords[1].x}
-                  y={record.coords[1].y}
-                  fontSize={18}
-                  fontStyle="bold"
-                  rotation={record.rotation}
-                />
-              </React.Fragment>
-            )
-          )}
-        </Layer>
-      </Stage>
-      <div style={{ height: 400 }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Field</th>
-              <th>Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            {params.map((param) => (
-              <tr>
-                <td>{param.name}</td>
-                <td>
-                  <input type="text" inputMode="numeric" />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        <Background variant={BackgroundVariant.Lines} color="#ccc" gap={15} />
+      </ReactFlow>
     </div>
-  );
-}
-
-export default App;
-
-function Curve({ points }) {
-  return (
-    <Shape
-      stroke="black"
-      strokeWidth={1}
-      sceneFunc={(con) => {
-        con.beginPath();
-        con.moveTo(points[0].x, points[0].y);
-        con.quadraticCurveTo(
-          points[1].x,
-          points[1].y,
-          points[2].x,
-          points[2].y
-        );
-        con.stroke();
-      }}
-    />
   );
 }
