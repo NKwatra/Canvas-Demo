@@ -51,7 +51,7 @@ export default function Point({ selected, data, xPos, yPos, id }) {
       {edges.length > 1 ? (
         <div
           className="nopan pointer-events"
-          onDoubleClick={(e) => {
+          onClick={(e) => {
             e.stopPropagation();
             setEditing(true);
           }}

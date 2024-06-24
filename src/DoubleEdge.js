@@ -87,7 +87,7 @@ export default function DoubleEdge({
             />
           ) : (
             <div
-              onDoubleClick={() => setIsEditing(true)}
+              onClick={() => setIsEditing(true)}
               className="nopan pointer-events"
             >
               {label}

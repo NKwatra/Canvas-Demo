@@ -12,7 +12,13 @@ export default function Input({ value, onChange, onDone, placeholder }) {
           placeholder={placeholder}
         />
       </div>
-      <FaCheckCircle color="#03C03C" onClick={onDone} />
+      <FaCheckCircle
+        color="#03C03C"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDone();
+        }}
+      />
     </div>
   );
 }
