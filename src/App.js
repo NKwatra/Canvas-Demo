@@ -14,6 +14,7 @@ import React from "react";
 import DoubleEdge from "./DoubleEdge";
 import { toPng } from "html-to-image";
 import { getAngle } from "./utils";
+import Girth from "./Girth";
 
 const nodeTypes = {
   point: Point,
@@ -251,6 +252,7 @@ export default function App() {
             Clear
           </button>
         </Panel>
+        <Girth edges={edges} />
       </ReactFlow>
     </div>
   );
