@@ -1,4 +1,6 @@
 import { BaseEdge, EdgeLabelRenderer, getStraightPath } from "reactflow";
+import React from "react";
+import Input from "./Input";
 
 export default function DoubleEdge({
   id,
@@ -7,7 +9,10 @@ export default function DoubleEdge({
   targetX,
   targetY,
   label,
+  data,
 }) {
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [inputLabel, setInputLabel] = React.useState("");
   const [e1, e2] = getEdgeEnds({
     x1: sourceX,
     y1: sourceY,
@@ -23,6 +28,28 @@ export default function DoubleEdge({
     targetX,
     targetY,
   });
+
+  function onInputChange(e) {
+    const value = parseInt(e.target.value);
+    if (!isNaN(value)) {
+      setInputLabel(value);
+    } else if (e.target.value === "") {
+      setInputLabel(e.target.value);
+    }
+  }
+
+  function onDone() {
+    if (
+      typeof inputLabel !== "number" ||
+      inputLabel < 100 ||
+      inputLabel > 1500
+    ) {
+      alert("side length needs to be between 100mm and 1500mm");
+      return;
+    }
+    setIsEditing(false);
+    data.onEdgeUpdate(id, inputLabel);
+  }
 
   return (
     <>
@@ -46,11 +73,26 @@ export default function DoubleEdge({
             position: "absolute",
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
             backgroundColor: "white",
-            padding: `8px 16px`,
+            padding: `4px 8px`,
             boxShadow: `6px 6px 11px 0 rgba(0,0,0,0.45)`,
+            zIndex: 10,
           }}
         >
-          {label}
+          {isEditing ? (
+            <Input
+              placeholder={label}
+              value={inputLabel}
+              onChange={onInputChange}
+              onDone={onDone}
+            />
+          ) : (
+            <div
+              onDoubleClick={() => setIsEditing(true)}
+              className="nopan pointer-events"
+            >
+              {label}
+            </div>
+          )}
         </div>
       </EdgeLabelRenderer>
     </>

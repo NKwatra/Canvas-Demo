@@ -1,6 +1,11 @@
 import { Handle, Position, useReactFlow } from "reactflow";
+import React from "react";
+import Input from "./Input";
+import { getAngle } from "./utils";
 
-export default function Point({ selected, data, xPos, yPos }) {
+export default function Point({ selected, data, xPos, yPos, id }) {
+  const [editing, setEditing] = React.useState(false);
+  const [angle, setAngle] = React.useState("");
   const instance = useReactFlow();
   const edges = data.edges.map((edge) => {
     const n1 = instance.getNode(edge.n1);
@@ -12,6 +17,24 @@ export default function Point({ selected, data, xPos, yPos }) {
       y2: n2.position.y,
     };
   });
+
+  function onChange(e) {
+    const value = parseInt(e.target.value);
+    if (!isNaN(value)) {
+      setAngle(value);
+    } else if (e.target.value === "") {
+      setAngle("");
+    }
+  }
+
+  function onDone() {
+    if (typeof angle !== "number" || angle < 0 || angle > 180) {
+      alert("angle needs to be between 0 and 180 deg");
+      return;
+    }
+    setEditing(false);
+    data.onAngleUpdate(id, getAngle(edges, { x: xPos, y: yPos }), angle);
+  }
 
   return (
     <>
@@ -25,7 +48,26 @@ export default function Point({ selected, data, xPos, yPos }) {
           cursor: "pointer",
         }}
       />
-      {edges.length > 1 ? getAngle(edges, { x: xPos, y: yPos }) : null}
+      {edges.length > 1 ? (
+        <div
+          className="nopan pointer-events"
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            setEditing(true);
+          }}
+        >
+          {!editing ? (
+            getAngle(edges, { x: xPos, y: yPos })
+          ) : (
+            <Input
+              placeholder="90"
+              onDone={onDone}
+              value={angle}
+              onChange={onChange}
+            />
+          )}
+        </div>
+      ) : null}
       <Handle
         type="source"
         position={Position.Top}
@@ -46,39 +88,4 @@ export default function Point({ selected, data, xPos, yPos }) {
       />
     </>
   );
-}
-
-export function getAngle(edges, position) {
-  console.log(position);
-  let x1 = position.x,
-    y1 = position.y,
-    x2,
-    y2,
-    x3,
-    y3;
-  let x = edges[0].x1;
-  if (x === position.x) {
-    x2 = edges[0].x2;
-    y2 = edges[0].y2;
-  } else {
-    x2 = edges[0].x1;
-    y2 = edges[0].y1;
-  }
-  x = edges[1].x1;
-  if (x === position.x) {
-    x3 = edges[1].x2;
-    y3 = edges[1].y2;
-  } else {
-    x3 = edges[1].x1;
-    y3 = edges[1].y1;
-  }
-
-  const dx21 = x2 - x1;
-  const dx31 = x3 - x1;
-  const dy21 = y2 - y1;
-  const dy31 = y3 - y1;
-  const m12 = Math.sqrt(dx21 * dx21 + dy21 * dy21);
-  const m13 = Math.sqrt(dx31 * dx31 + dy31 * dy31);
-  const theta = Math.acos((dx21 * dx31 + dy21 * dy31) / (m12 * m13));
-  return Math.round((180 * theta) / Math.PI);
 }

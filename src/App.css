@@ -3,3 +3,26 @@
   height: 100vh;
   height: 100svh !important;
 }
+
+.pointer-events {
+  pointer-events: all;
+}
+
+.inputContainer {
+  display: flex;
+  align-items: center;
+  column-gap: 8px;
+  font-size: 1rem;
+}
+
+.input {
+  border: none;
+  background-color: #eaeaea;
+  padding: 4px 16px;
+  border-radius: 8px;
+  width: 80px;
+}
+
+.input:focus {
+  outline: none;
+}
